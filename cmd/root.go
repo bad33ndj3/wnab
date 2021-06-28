@@ -5,19 +5,24 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"path"
 )
 
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "wnab",
-	Short: "We Need A Budget",
-	Long: `We Need A Budget (WNAB) is a CLI tool that is meant to be used for couples that use YNAB.
-This tool will sync the needed 'income' of a 'shared account' to a specific 'budget' in each partners personal YNAB budget.`,
-	Run: func(cmd *cobra.Command, args []string) {
+var rootCmd = newRootCmd()
 
-	},
+func newRootCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "wnab",
+		Short: "We Need A Budget",
+		Long: `We Need A Budget (WNAB) is a CLI tool that is meant to be used for couples that use YNAB.
+This tool will sync the needed 'income' of a 'shared account' to a specific 'budget' in each partners personal YNAB budget.`,
+		Run: func(cmd *cobra.Command, args []string) {
+
+		},
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -28,16 +33,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.wnab.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -60,5 +56,12 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		home, err := homedir.Dir()
+		cobra.CheckErr(err)
+		configPath := path.Join(home, ".wnab.yaml")
+		err = viper.SafeWriteConfigAs(configPath)
+		cobra.CheckErr(err)
+		fmt.Println("Created config file:", configPath)
 	}
 }
