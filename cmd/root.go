@@ -2,25 +2,60 @@ package cmd
 
 import (
 	"fmt"
+	"path"
+	"strings"
+
+	"github.com/davecgh/go-spew/spew"
+
+	"go.bmvs.io/ynab/api/category"
+
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"path"
+	"go.bmvs.io/ynab"
 )
 
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
-var rootCmd = newRootCmd()
+var rootCmd = newRootCmd(ynab.NewClient(""))
 
-func newRootCmd() *cobra.Command {
+func newRootCmd(ynabClient ynab.ClientServicer) *cobra.Command {
 	return &cobra.Command{
 		Use:   "wnab",
 		Short: "We Need A Budget",
 		Long: `We Need A Budget (WNAB) is a CLI tool that is meant to be used for couples that use YNAB.
 This tool will sync the needed 'income' of a 'shared account' to a specific 'budget' in each partners personal YNAB budget.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			budgets, err := ynabClient.Budget().GetBudgets()
+			if err != nil {
+				return err
+			}
 
+			var categories []*category.GroupWithCategories
+			for i := range budgets {
+				curCategories, err := ynabClient.Category().GetCategories(budgets[i].ID)
+				if err != nil {
+					return err
+				}
+				categories = append(categories, curCategories...)
+			}
+
+			var person1, person2 category.Category
+			for i := range categories {
+				for j := range categories[i].Categories {
+					if strings.Contains(categories[i].Categories[j].Name, "#A") {
+						person1 = *categories[i].Categories[j]
+					}
+					if strings.Contains(categories[i].Categories[j].Name, "#B") {
+						person2 = *categories[i].Categories[j]
+					}
+				}
+			}
+
+			spew.Dump(person1, person2)
+
+			return nil
 		},
 	}
 }
